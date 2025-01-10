@@ -1,0 +1,31 @@
+name: List Databricks Clusters
+
+on:
+  workflow_dispatch:
+
+jobs:
+  list-clusters:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v3
+
+    - name: Make API call to list clusters
+      env:
+        DATABRICKS_HOST: "https://adb-3694404653147455.15.azuredatabricks.net"
+        DATABRICKS_TOKEN: "dapib9888e9f536603d41d6083905911c635"
+      run: |
+        # Install jq for parsing JSON
+        sudo apt-get update && sudo apt-get install -y jq
+
+        # Make the API call to Databricks
+        RESPONSE=$(curl -s -X GET "$DATABRICKS_HOST/api/2.0/clusters/list" \
+          -H "Authorization: Bearer $DATABRICKS_TOKEN")
+
+        # Output the response
+        echo "Response from Databricks:"
+        echo "$RESPONSE" | jq '.'
+
+        # Save response to a file if needed
+        echo "$RESPONSE" > clusters_list.json
