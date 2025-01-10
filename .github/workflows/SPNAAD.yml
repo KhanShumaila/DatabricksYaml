@@ -1,0 +1,48 @@
+name: List Databricks Clusters
+
+on:
+  workflow_dispatch:
+
+jobs:
+  list-clusters:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v3
+
+    - name: Authenticate and get AAD token
+      env:
+        AZURE_CLIENT_ID: "233426a1-7d3c-4851-b59c-3037f9644770"
+        AZURE_CLIENT_SECRET: ".TC8Q~y4VmXhiffewiFDZwXJ~8yU1_FR.lYeya6m"
+        AZURE_TENANT_ID: "47a0a57a-adff-4b4b-b1ce-a9a2775ddd67"
+        DATABRICKS_RESOURCE_ID: "2ff814a6-3304-4ab8-85cb-cd0e6f879c1d"
+      run: |
+        # Install Azure CLI
+        curl -sL https://aka.ms/InstallAzureCLIDeb | sudo bash
+
+        # Login using Service Principal
+        az login --service-principal -u "$AZURE_CLIENT_ID" -p "$AZURE_CLIENT_SECRET" --tenant "$AZURE_TENANT_ID"
+
+        # Get AAD token for Databricks
+        AAD_TOKEN=$(az account get-access-token --resource "$DATABRICKS_RESOURCE_ID" --query accessToken -o tsv)
+        echo "AAD_TOKEN=$AAD_TOKEN" >> $GITHUB_ENV
+
+    - name: Make API call to list clusters
+      env:
+        DATABRICKS_HOST: "https://adb-3694404653147455.15.azuredatabricks.net"
+        AAD_TOKEN: ${{ env.AAD_TOKEN }}
+      run: |
+        # Install jq for parsing JSON
+        sudo apt-get update && sudo apt-get install -y jq
+
+        # Make the API call to Databricks
+        RESPONSE=$(curl -s -X GET "$DATABRICKS_HOST/api/2.0/clusters/list" \
+          -H "Authorization: Bearer $AAD_TOKEN")
+
+        # Output the response
+        echo "Response from Databricks:"
+        echo "$RESPONSE" | jq '.'
+
+        # Save response to a file if needed
+        echo "$RESPONSE" > clusters_list.json
